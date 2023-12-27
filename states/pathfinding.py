@@ -18,7 +18,7 @@ class PathFinding(State):
          if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_m:
                 self.next = "MENU"
-                self.done = True
+                self.is_done = True
             if event.key == pygame.K_a:
                 self.next = "ABOUT"
-                self.done = True
+                self.is_done = True

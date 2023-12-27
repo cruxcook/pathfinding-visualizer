@@ -29,10 +29,10 @@ class About(State):
         if event.type == pygame.MOUSEBUTTONDOWN:      
             if event.button == 1 and self.hover_pathfinding :
                 self.next = "PATHFINDING"
-                self.done = True
+                self.is_done = True
             elif event.button == 1 and self.hover_menu:
                 self.next = "MENU"
-                self.done = True
+                self.is_done = True
 
     def draw_btns(self, surface):
         self.menu_btn = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH - 15,

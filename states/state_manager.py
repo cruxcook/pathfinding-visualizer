@@ -15,8 +15,8 @@ class StateManager:
         
         #---------------------------------------------------------------------------------------#
         self.state_dict = {"MENU" : Menu(),
-                          "PATHFINDING" : PathFinding(),
-                          "ABOUT" : About()}
+                            "PATHFINDING" : PathFinding(),
+                            "ABOUT" : About()}
         
         self.load_state("MENU")
         
@@ -24,7 +24,7 @@ class StateManager:
         self.state = self.state_dict[state_name]
     
     def flip_state(self):
-        self.state.done = False
+        self.state.is_done = False
         self.state_name = self.state.next
         self.load_state(self.state_name)
 
@@ -42,7 +42,7 @@ class StateManager:
         sys.exit()
     
     def update(self, dt):
-        if self.state.done == True:
+        if self.state.is_done == True:
             self.flip_state()
             
         self.state.update(dt)
