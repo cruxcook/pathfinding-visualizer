@@ -5,7 +5,7 @@ from settings import *
 
 class State():
     def __init__(self):
-        self.done =  False
+        self.is_done =  False
         self.current = None
         self.next = None
         
