@@ -3,7 +3,7 @@ from pygame.locals import *
 
 from states.state import *
 
-class PathFinding(State):
+class Pathfinding(State):
     def __init__(self):
         super().__init__()
         self.current = "PATHFINDING"
@@ -12,7 +12,9 @@ class PathFinding(State):
         pass
     
     def draw(self, surface):
-        surface.fill(Color("blue"))
+        surface.fill(Color(BACKGROUND_COLOR))
+        pygame.draw.rect(surface, Color("white"),((0,HEIGHT),(WIDTH,TILE_SIZE+20)))
+        draw_grid(surface)
 
     def get_event(self,event):
          if event.type == pygame.KEYDOWN:

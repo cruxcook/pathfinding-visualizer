@@ -15,7 +15,7 @@ class StateManager:
         
         #---------------------------------------------------------------------------------------#
         self.state_dict = {"MENU" : Menu(),
-                            "PATHFINDING" : PathFinding(),
+                            "PATHFINDING" : Pathfinding(),
                             "ABOUT" : About()}
         
         self.load_state("MENU")
