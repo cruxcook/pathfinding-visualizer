@@ -10,7 +10,7 @@ class StateManager:
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.init()
         self.running = True
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT+TILE_SIZE))
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT+TILE_SIZE + 20))   #! Find a better fix for (+20)
         self.clock = pygame.time.Clock()
         
         #---------------------------------------------------------------------------------------#
@@ -48,6 +48,7 @@ class StateManager:
         self.state.update(dt)
         
     def draw(self, surface):
+        pygame.display.set_caption("{} - FPS: {:.2f}".format(TITLE, self.clock.get_fps() ))
         self.state.draw(surface)
         
     def event_handler(self):
