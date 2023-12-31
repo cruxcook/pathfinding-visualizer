@@ -69,6 +69,15 @@ class Pathfinding(State):
                 self.is_instruction_btn_pressed = True
             elif event.button == 1 and self.is_map_btn_hovered:
                 self.is_map_btn_pressed = True
+            elif event.button == 1 and self.is_remove_btn_hovered:
+                self.all_sprites = pygame.sprite.Group()
+                self.sg.walls = []                      #Need to update ( remove or sth, not neccessary because we alread had all_sprites)
+                self.wg.walls = []
+                self.is_random_btn_pressed = False
+
+                # Reset search value    
+                self.new_search_props()  
+                self.search = None
             elif event.button == 1:     # Left Mouse places a regular wall
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
                     self.is_mouse_pressed = True 
@@ -143,6 +152,12 @@ class Pathfinding(State):
         self.ending_pos = vector(3,13)      # Default ending position
         self.is_mouse_pressed = False       # Place regular wall on map 
         self.is_weighted_pressed = False    # Place weighted wall on map
+
+        # REMOVE BUTTON
+        self.is_remove_btn_hovered = False
+
+        # ALGORITHM BUTTON
+        self.search = None                  # Track running `Search` algorithm 
 
     def load_assets(self):
         super().load_dirs()
