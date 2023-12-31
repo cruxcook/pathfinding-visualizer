@@ -22,16 +22,24 @@ class Pathfinding(State):
         self.draw_btns(surface)
 
     def get_event(self,event):
-         if event.type == pygame.KEYDOWN:
+        #-----------Input from keys (WIP)
+        if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_m:
                 self.next = "MENU"
                 self.is_done = True
-            if event.key == pygame.K_a:
-                self.next = "ABOUT"
+
+        #-----------Input from mouse
+        # 1: Left Mouse
+        # 2: Middle Mouse
+        # 3: Right Mouse
+        if event.type == pygame.MOUSEBUTTONDOWN: 
+            if event.button == 1 and self.is_menu_btn_hovered:
+                self.next = "MENU"
                 self.is_done = True
 
     #-------------------------------------------------Load Data-----------------------------------------------------------#
     def load_props(self):
+        self.is_menu_btn_hovered = False
         self.is_instruction_closed = False
 
     #-------------------------------------------------Rendering-------------------------------------------#
