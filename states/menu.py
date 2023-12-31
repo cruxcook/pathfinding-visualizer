@@ -12,8 +12,8 @@ class Menu(State):
         self.load_props()
         
     def load_props(self):
-        self.hover_pathfinding  = False
-        self.hover_about = False
+        self.is_pathfinding_btn_hovered  = False
+        self.is_about_btn_hovered = False
         
     def update(self, dt):
         pass
@@ -28,45 +28,29 @@ class Menu(State):
         
     def get_event(self,event):
         if event.type == pygame.MOUSEBUTTONDOWN:      
-            if event.button == 1 and self.hover_pathfinding :
+            if event.button == 1 and self.is_pathfinding_btn_hovered :
                 self.next = "PATHFINDING"
                 self.is_done = True
-            elif event.button == 1 and self.hover_about:
+            elif event.button == 1 and self.is_about_btn_hovered:
                 self.next = "ABOUT"
                 self.is_done = True
     
     def draw_btns(self,surface):
-        self.pathfinding_btn = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH - 15, 
-                                            HEIGHT + (TILE_SIZE+20)/2, 
-                                            BUTTON_WIDTH, BUTTON_HEIGHT, 
-                                            surface, Color(BUTTON_COLOR), 
-                                            "Start", Color(TEXT_COLOR), TEXT_SIZE)
-        self.about_btn = draw_txt_rect( WIDTH/2 + BUTTON_WIDTH + 15, 
-                                        HEIGHT + (TILE_SIZE+20)/2,
-                                        BUTTON_WIDTH, BUTTON_HEIGHT, 
-                                        surface, Color(BUTTON_COLOR), "About", 
-                                        Color(TEXT_COLOR), TEXT_SIZE)
+        self.pathfinding_btn    = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH - 15, HEIGHT + (TILE_SIZE+20)/2, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Start", Color(TEXT_COLOR), TEXT_SIZE)
+        self.about_btn          = draw_txt_rect(WIDTH/2 + BUTTON_WIDTH + 15, HEIGHT + (TILE_SIZE+20)/2, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "About", Color(TEXT_COLOR), TEXT_SIZE)
 
         mouse_pos = vector(pygame.mouse.get_pos())
         if self.pathfinding_btn.collidepoint(mouse_pos):
-            self.hover_pathfinding =  True
-            self.pathfinding_btn = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH - 15,
-                                                HEIGHT + (TILE_SIZE+20)/2,
-                                                BUTTON_HOVER_WIDTH, BUTTON_HOVER_HEIGHT, 
-                                                surface, Color(BUTTON_HOVER_COLOR), 
-                                                "Start", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            self.is_pathfinding_btn_hovered =  True
+            self.pathfinding_btn = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH - 15,HEIGHT + (TILE_SIZE+20)/2,BUTTON_HOVER_WIDTH, BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Start", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
         else:
-            self.hover_pathfinding  = False
+            self.is_pathfinding_btn_hovered  = False
             
         if self.about_btn.collidepoint(mouse_pos):
-            self.hover_about =  True
-            self.about_btn = draw_txt_rect(WIDTH/2 + BUTTON_WIDTH + 15,
-                                            HEIGHT + (TILE_SIZE+20)/2,
-                                            BUTTON_HOVER_WIDTH, BUTTON_HOVER_HEIGHT, 
-                                            surface, Color(BUTTON_HOVER_COLOR), 
-                                            "About", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            self.is_about_btn_hovered =  True
+            self.about_btn = draw_txt_rect(WIDTH/2 + BUTTON_WIDTH + 15,HEIGHT + (TILE_SIZE+20)/2,BUTTON_HOVER_WIDTH, BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "About", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
         else:
-            self.hover_about  = False
+            self.is_about_btn_hovered  = False
             
     def draw_letters(self, surface):
         super().load_dirs()
