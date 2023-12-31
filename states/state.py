@@ -3,6 +3,7 @@ from pygame.locals import *
 from os import path
 from settings import * 
 
+vector = pygame.math.Vector2
 class State():
     def __init__(self):
         self.is_done =  False

@@ -4,7 +4,6 @@ from pygame.locals import *
 from settings import *
 from states.state import *
 
-vector = pygame.math.Vector2
 class Menu(State):
     def __init__(self):
         super().__init__()

@@ -3,7 +3,6 @@ from pygame.locals import *
 
 from states.state import *
 
-vector = pygame.math.Vector2
 class About(State):
     def __init__(self):
         super().__init__()
