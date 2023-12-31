@@ -49,7 +49,7 @@ class Pathfinding(State):
         self.all_sprites.draw(surface)
 
     def get_event(self,event):
-        #-----------Input from keys (WIP)
+        #!-----------Input from keys (WIP)
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_m:
                 self.next = "MENU"
@@ -59,6 +59,8 @@ class Pathfinding(State):
         # 1: Left Mouse
         # 2: Middle Mouse
         # 3: Right Mouse
+        mouse_pos = vector(pygame.mouse.get_pos()) // TILE_SIZE     # Division(floor)
+
         if event.type == pygame.MOUSEBUTTONDOWN: 
             if event.button == 1 and self.is_menu_btn_hovered:
                 self.next = "MENU"
@@ -67,6 +69,52 @@ class Pathfinding(State):
                 self.is_instruction_btn_pressed = True
             elif event.button == 1 and self.is_map_btn_hovered:
                 self.is_map_btn_pressed = True
+            elif event.button == 1:     # Left Mouse places a regular wall
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
+                    self.is_mouse_pressed = True 
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                        if mouse_pos in self.sg.walls :
+                            pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
+                            self.sg.walls.remove(mouse_pos)
+                        else:
+                            Wall(self,vector(mouse_pos),self.wall_icon)
+                            self.sg.walls.append(mouse_pos)
+                    self.wg.walls = self.sg.walls                      
+                    self.load_search()
+            elif event.button == 3:     # Right Mouse places Ending Icon
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                        if not mouse_pos in self.sg.walls :
+                            self.ending_pos = mouse_pos
+                            self.load_search()
+            elif event.button == 2:     # Middle Mouse places Starting Icon
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                        if not mouse_pos in self.sg.walls :
+                            self.starting_pos = mouse_pos
+                            self.load_search()
+                            
+        # Combine `MOUSEMOTION` & `MOUSEBUTTONUP` to place walls/weighted walls
+        # when holding mouse, not clicking 1 by 1.
+        elif event.type == pygame.MOUSEMOTION:
+            if self.is_mouse_pressed:
+                if (0 <= int(mouse_pos.x) < GRID_WIDTH) and (0 <= int(mouse_pos.y) < GRID_HEIGHT): 
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                        if mouse_pos not in self.sg.walls :
+                            Wall(self,vector(mouse_pos),self.wall_icon)
+                            self.sg.walls.append(mouse_pos)
+                    self.wg.walls = self.sg.walls 
+
+            elif self.is_weighted_pressed:
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                        if self.vec2int(mouse_pos) not in self.wg.weights :
+                            WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
+                            self.wg.weights[self.vec2int(mouse_pos)] = 50       # low priority == hight cost
+                
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.is_mouse_pressed = False
+            self.is_weighted_pressed = False
 
     #-------------------------------Load Data----------------------------------#
     def load_props(self):
@@ -91,8 +139,10 @@ class Pathfinding(State):
         self.is_random_btn_pressed = False
         self.is_file_btn_hovered = False
         self.is_random_btn_hovered = False
-        self.starting_pos = vector(20,0)       # Default starting position
-        self.ending_pos = vector(3,13)         # Default ending position
+        self.starting_pos = vector(20,0)    # Default starting position
+        self.ending_pos = vector(3,13)      # Default ending position
+        self.is_mouse_pressed = False       # Place regular wall on map 
+        self.is_weighted_pressed = False    # Place weighted wall on map
 
     def load_assets(self):
         super().load_dirs()
@@ -145,10 +195,14 @@ class Pathfinding(State):
             Wall(self,vector(wall),self.wall_icon)
         return data
     
+    def load_search(self):
+        pass
+
     def new_search_props(self):
         pass
 
     #-------------------------------Support functions--------------------------#
+    #! Fix this to PRIVATE
     def generate_random_map(self):
         '''
         for y in range(0, GRID_HEIGHT, 1):
@@ -174,6 +228,12 @@ class Pathfinding(State):
                 self.width_pos = 0
         else:
             self.is_random_btn_pressed = False
+
+    #! Fix this to PRIVATE
+    def check_collision(self, a, b):
+        if a == b:
+            return True 
+        return False 
 
     #---------------------------------Rendering--------------------------------#
     def draw_btns(self, surface):
@@ -306,6 +366,7 @@ class Pathfinding(State):
             #------------------------------------------------------------------#
             pygame.display.update()
 
+    #? Consider separating Map function into a class
     def draw_map(self, surface):
         while True:
             draw_rect(WIDTH/2,HEIGHT/2,250,350, surface, Color("black"))
