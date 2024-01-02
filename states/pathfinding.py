@@ -600,19 +600,19 @@ class Pathfinding(State):
     def draw_bfs_path(self, surface):
         if self.is_bfs_done == True:
             self.bfs_path = self.get_bfs_path(self.sg, self.starting_pos, self.ending_pos)
-            mainPath = {}               # save the final path from location to destination
+            main_path = {}               # save the final path from location to destination
 
             ''' Start rendering from destination back to location, due to the sign of arrows '''
-            currentNode = self.ending_pos - self.bfs_path[self.convert_vect_int(self.ending_pos)]
-            while currentNode != self.starting_pos:   
+            current_node = self.ending_pos - self.bfs_path[self.convert_vect_int(self.ending_pos)]
+            while current_node != self.starting_pos:   
                 # save the final path for path animation
-                mainPath[self.convert_vect_int(currentNode)] = self.bfs_path[self.convert_vect_int(currentNode)]
-                # find nextNode in path
-                currentNode = currentNode - self.bfs_path[self.convert_vect_int(currentNode)]    
+                main_path[self.convert_vect_int(current_node)] = self.bfs_path[self.convert_vect_int(current_node)]
+                # find next_node in path
+                current_node = current_node - self.bfs_path[self.convert_vect_int(current_node)]    
                 
             if self.is_node_path_done == False:
-                for node in mainPath:          # save node of the main path
-                    self.node_path.append(node)      # use node_path[] instead of assigning directly mainPath{} for splitting up node, from direction in mainMap 
+                for node in main_path:          # save node of the main path
+                    self.node_path.append(node)      # use node_path[] instead of assigning directly main_path{} for splitting up node, from direction in mainMap 
                 self.is_node_path_done = True
         
             if self.is_timer_running == True:   
@@ -621,26 +621,26 @@ class Pathfinding(State):
             draw_text(str(self.end_time)+"'", surface, 22, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 + 15)
 
         if self.is_node_path_done:            
-            """ Update node_path as well as exclude updating mainPath with new location"""
-            for currentNode in self.node_path:
-                currentNode = vector(currentNode)
-                x = currentNode.x * TILE_SIZE + TILE_SIZE / 2
-                y = currentNode.y * TILE_SIZE + TILE_SIZE / 2
-                img = self.arrows[self.convert_vect_int(self.bfs_path[self.convert_vect_int(currentNode)])]
+            """ Update node_path as well as exclude updating main_path with new location"""
+            for current_node in self.node_path:
+                current_node = vector(current_node)
+                x = current_node.x * TILE_SIZE + TILE_SIZE / 2
+                y = current_node.y * TILE_SIZE + TILE_SIZE / 2
+                img = self.arrows[self.convert_vect_int(self.bfs_path[self.convert_vect_int(current_node)])]
                 r = img.get_rect(center=(x, y))
                 surface.blit(img, r)
 
     #---------------------------------Algorithms-------------------------------#
     def BreadthFirstSearch(self, graph,start,end): 
         if len(self.bfs_frontier)>0 and self.is_bfs_done == False:     # as long as there are things in frontier
-            #currentNode = self.checkB_DFS(self.bfs_frontier)     # Uncomment this if had checkB_DFS
-            currentNode = self.bfs_frontier.popleft()   #! Remove this if had checkB_DFS()   
-            if currentNode == end:
+            #current_node = self.checkB_DFS(self.bfs_frontier)     # Uncomment this if had checkB_DFS
+            current_node = self.bfs_frontier.popleft()   #! Remove this if had checkB_DFS()   
+            if current_node == end:
                 self.is_bfs_done = True
-            for nextNode in graph.find_neighbors(currentNode, graph.connection):       # find neightbor of currentNode node
-                if nextNode not in self.bfs_visited:
-                    self.bfs_frontier.append(nextNode)
-                    self.bfs_visited.append(nextNode)
+            for next_node in graph.find_neighbors(current_node, graph.connection):       # find neightbor of current_node node
+                if next_node not in self.bfs_visited:
+                    self.bfs_frontier.append(next_node)
+                    self.bfs_visited.append(next_node)
     
     def get_bfs_path(self, graph, start, end):
         """ Rerun BFS but from destination to location to draw the path"""
@@ -649,13 +649,13 @@ class Pathfinding(State):
         path = {}
         path[self.convert_vect_int(start)] = None
         while len(frontier) > 0:
-            #currentNode = self.checkB_DFS(frontier)    # Uncomment this if had checkB_DFS
-            currentNode = frontier.popleft()   #! Remove this if had checkB_DFS()       
-            if currentNode == end:
+            #current_node = self.checkB_DFS(frontier)    # Uncomment this if had checkB_DFS
+            current_node = frontier.popleft()   #! Remove this if had checkB_DFS()       
+            if current_node == end:
                 break
-            for nextNode in graph.find_neighbors(currentNode, graph.connection):
-                if self.convert_vect_int(nextNode) not in path:
-                    frontier.append(nextNode)
-                    path[self.convert_vect_int(nextNode)] = nextNode - currentNode 
+            for next_node in graph.find_neighbors(current_node, graph.connection):
+                if self.convert_vect_int(next_node) not in path:
+                    frontier.append(next_node)
+                    path[self.convert_vect_int(next_node)] = next_node - current_node 
         return path    
        
