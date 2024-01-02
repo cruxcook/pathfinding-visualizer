@@ -1,6 +1,7 @@
 import pygame, sys, os, time, math, random
 import ast        # Convert string to list
 from pygame.locals import *
+from collections import deque       # The double-ended queue, cannot access items in the middle, but perfect for either ends ( faster than using list )
 
 from settings import *
 from states.state import *
@@ -28,9 +29,11 @@ class Pathfinding(State):
             self.width_pos = 0
             self.height_pos= 0
 
+        if self.is_timer_running == True:
+            self.start_time = pygame.time.get_ticks()
+
         if self.search == "BFS":
-            #self.breadthDepthFirstSearch(self.sg,self.location, self.destination)
-            pass
+            self.BreadthFirstSearch(self.sg, self.starting_pos, self.ending_pos)
 
         self.all_sprites.update()
         self.all_walls.update()
@@ -54,6 +57,14 @@ class Pathfinding(State):
         if self.is_algorithm_btn_pressed == True:
             self.draw_search_algorithms(surface)
             self.is_algorithm_btn_pressed = False
+
+        if self.search is not None:
+            draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
+            if self.search == "BFS":
+                self.draw_bfs_area(surface)
+                self.draw_bfs_path(surface)  
+        else:
+            draw_text("HELLO", surface, 35, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2) 
         
         #----------------------------------------------------------------------#
         self.draw_default_icons(surface)
@@ -198,6 +209,8 @@ class Pathfinding(State):
         self.search = None                  # Track running `Search` algorithm 
         self.is_algorithm_btn_pressed = False
         self.is_algorithm_btn_hovered = False
+        self.is_bfs_done = False
+        self.is_timer_running = False
 
     def load_assets(self):
         super().load_dirs()
@@ -251,13 +264,29 @@ class Pathfinding(State):
         return data
     
     def load_search(self):
-        pass
+        if self.search == "BFS" or self.search == "DFS":
+            self.is_bfs_done = False  # Reset search value   
+
+        self.new_search_props() 
+        self.load_search_props()
 
     def new_search_props(self):
-        pass
+        self.bfs_frontier = deque()
+        self.bfs_visited = []
+        self.bfs_path = {}       # {node( int(vector) ) : direction(vector)}
+
+        self.node_path = deque() # Save only node of "main path" to pop out
 
     def load_search_props(self):
-        pass
+        self.bfs_frontier.append(self.starting_pos) 
+        self.bfs_visited.append(self.starting_pos)
+        self.bfs_path[self.convert_vect_int(self.starting_pos)] = None  
+
+        self.start_time = 0
+        self.end_time = 0
+        self.is_timer_running = True
+        self.is_node_path_done = False            # need to check in case loop of program add up more path in "node_path"
+        self.node_path = deque()
 
     #-------------------------------Support functions--------------------------#
     #! Fix this to PRIVATE
@@ -550,3 +579,83 @@ class Pathfinding(State):
         
         self.center_starting_pos = (self.starting_pos.x * TILE_SIZE + TILE_SIZE / 2, self.starting_pos.y * TILE_SIZE + TILE_SIZE / 2)
         surface.blit(self.starting_icon, self.starting_icon.get_rect(center=self.center_starting_pos))
+
+    def draw_bfs_area(self, surface):
+        visitedColor = "#318889"
+        frontierColor = "#00fff3"
+
+        # filled visited areas
+        for loc in self.bfs_visited:
+            x, y = loc
+            r = pygame.Rect(x * TILE_SIZE +1, y * TILE_SIZE +1, TILE_SIZE -1, TILE_SIZE-1)
+            pygame.draw.rect(surface, Color(visitedColor), r)
+        
+        # filled frontier areas
+        if len(self.bfs_frontier) > 0:   
+            for node in self.bfs_frontier:
+                x, y = node
+                r = pygame.Rect(x * TILE_SIZE +1, y * TILE_SIZE + 1, TILE_SIZE -1, TILE_SIZE -1)
+                pygame.draw.rect(surface, Color(frontierColor), r)            
+
+    def draw_bfs_path(self, surface):
+        if self.is_bfs_done == True:
+            self.bfs_path = self.get_bfs_path(self.sg, self.starting_pos, self.ending_pos)
+            mainPath = {}               # save the final path from location to destination
+
+            ''' Start rendering from destination back to location, due to the sign of arrows '''
+            currentNode = self.ending_pos - self.bfs_path[self.convert_vect_int(self.ending_pos)]
+            while currentNode != self.starting_pos:   
+                # save the final path for path animation
+                mainPath[self.convert_vect_int(currentNode)] = self.bfs_path[self.convert_vect_int(currentNode)]
+                # find nextNode in path
+                currentNode = currentNode - self.bfs_path[self.convert_vect_int(currentNode)]    
+                
+            if self.is_node_path_done == False:
+                for node in mainPath:          # save node of the main path
+                    self.node_path.append(node)      # use node_path[] instead of assigning directly mainPath{} for splitting up node, from direction in mainMap 
+                self.is_node_path_done = True
+        
+            if self.is_timer_running == True:   
+                self.end_time = pygame.time.get_ticks() - self.start_time 
+                self.is_timer_running = False      
+            draw_text(str(self.end_time)+"'", surface, 22, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 + 15)
+
+        if self.is_node_path_done:            
+            """ Update node_path as well as exclude updating mainPath with new location"""
+            for currentNode in self.node_path:
+                currentNode = vector(currentNode)
+                x = currentNode.x * TILE_SIZE + TILE_SIZE / 2
+                y = currentNode.y * TILE_SIZE + TILE_SIZE / 2
+                img = self.arrows[self.convert_vect_int(self.bfs_path[self.convert_vect_int(currentNode)])]
+                r = img.get_rect(center=(x, y))
+                surface.blit(img, r)
+
+    #---------------------------------Algorithms-------------------------------#
+    def BreadthFirstSearch(self, graph,start,end): 
+        if len(self.bfs_frontier)>0 and self.is_bfs_done == False:     # as long as there are things in frontier
+            #currentNode = self.checkB_DFS(self.bfs_frontier)     # Uncomment this if had checkB_DFS
+            currentNode = self.bfs_frontier.popleft()   #! Remove this if had checkB_DFS()   
+            if currentNode == end:
+                self.is_bfs_done = True
+            for nextNode in graph.find_neighbors(currentNode, graph.connection):       # find neightbor of currentNode node
+                if nextNode not in self.bfs_visited:
+                    self.bfs_frontier.append(nextNode)
+                    self.bfs_visited.append(nextNode)
+    
+    def get_bfs_path(self, graph, start, end):
+        """ Rerun BFS but from destination to location to draw the path"""
+        frontier = deque()
+        frontier.append(start)
+        path = {}
+        path[self.convert_vect_int(start)] = None
+        while len(frontier) > 0:
+            #currentNode = self.checkB_DFS(frontier)    # Uncomment this if had checkB_DFS
+            currentNode = frontier.popleft()   #! Remove this if had checkB_DFS()       
+            if currentNode == end:
+                break
+            for nextNode in graph.find_neighbors(currentNode, graph.connection):
+                if self.convert_vect_int(nextNode) not in path:
+                    frontier.append(nextNode)
+                    path[self.convert_vect_int(nextNode)] = nextNode - currentNode 
+        return path    
+       
