@@ -29,6 +29,13 @@ class Pathfinding(State):
             self.width_pos = 0
             self.height_pos= 0
 
+        if self.path_line == "Diagonal":
+            self.sg.connection = [vector(1,0),vector(-1,0),vector(0,1),vector(0,-1),
+                                vector(1,1),vector(-1,1),vector(1,-1),vector(-1,-1)]
+        else:
+            self.sg.connection = [vector(1,0),vector(-1,0),vector(0,1),vector(0,-1)]
+        self.wg.connection = self.sg.connection
+
         if self.is_timer_running == True:
             self.start_time = pygame.time.get_ticks()
 
@@ -55,8 +62,12 @@ class Pathfinding(State):
             self.is_map_btn_pressed = False
 
         if self.is_algorithm_btn_pressed == True:
-            self.draw_search_algorithms(surface)
+            self.draw_algorithm_menu(surface)    
             self.is_algorithm_btn_pressed = False
+
+        if self.is_path_btn_pressed == True:
+            self.draw_path_menu(surface)
+            self.is_path_btn_pressed = False
 
         if self.search is not None:
             draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
@@ -127,6 +138,8 @@ class Pathfinding(State):
                 self.search = None
             elif event.button == 1 and self.is_algorithm_btn_hovered:
                 self.is_algorithm_btn_pressed = True
+            elif event.button == 1 and self.is_path_btn_hovered:
+                self.is_path_btn_pressed = True
             elif event.button == 1:     # Left Mouse places a regular wall
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
                     self.is_mouse_pressed = True 
@@ -211,6 +224,11 @@ class Pathfinding(State):
         self.is_algorithm_btn_hovered = False
         self.is_bfs_done = False
         self.is_timer_running = False
+
+        # PATH BUTTON
+        self.is_path_btn_hovered = False
+        self.is_path_btn_pressed = False
+        self.path_line = None               # Change line to Diagonal or Straight
 
     def load_assets(self):
         super().load_dirs()
@@ -531,7 +549,7 @@ class Pathfinding(State):
             pygame.display.update()
 
     # Draw algorithm options to choose
-    def draw_search_algorithms(self, surface):
+    def draw_algorithm_menu(self, surface):
         while True:
             draw_rect(WIDTH/2,HEIGHT/2,560,410, surface, Color("black"))
             draw_rect(WIDTH/2,HEIGHT/2,550,400, surface, Color("white"))
@@ -571,6 +589,60 @@ class Pathfinding(State):
                         return
             pygame.display.update()   
 
+    def draw_path_menu(self, surface):
+        while True:
+            draw_rect(WIDTH/2,HEIGHT/2,250,350, surface, Color("black"))
+            draw_rect(WIDTH/2,HEIGHT/2,240,340, surface, Color("white"))
+
+            draw_text("Path Line", surface, 40, Color("red"), WIDTH/2, HEIGHT/2 - 160 + 30)
+            
+            self.diagonal_btn = draw_txt_rect(WIDTH/2,HEIGHT/2- 80 + 30,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Diagonal", Color(TEXT_COLOR), TEXT_SIZE)
+            self.straight_btn = draw_txt_rect(WIDTH/2,HEIGHT/2 +30 ,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Straight", Color(TEXT_COLOR), TEXT_SIZE)
+            self.close_btn    = draw_txt_rect(WIDTH/2,HEIGHT/2+80 + 30,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Close", Color(TEXT_COLOR), TEXT_SIZE)
+            
+            mouse_pos = vector(pygame.mouse.get_pos())
+
+            if self.diagonal_btn.collidepoint(mouse_pos):
+                self.is_diagonal_btn_hovered  = True
+                self.diagonal_btn = draw_txt_rect(WIDTH/2,HEIGHT/2-80 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Diagonal", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_diagonal_btn_hovered  = False
+                
+            if self.straight_btn.collidepoint(mouse_pos):
+                self.is_straight_btn_hovered  = True
+                self.straight_btn = draw_txt_rect(WIDTH/2,HEIGHT/2 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Straight", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_straight_btn_hovered  = False
+                
+            if self.close_btn.collidepoint(mouse_pos):
+                self.is_close_btn_hovered  = True
+                self.close_btn = draw_txt_rect(WIDTH/2,HEIGHT/2+80 + 30 ,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Close", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_close_btn_hovered  = False
+                
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        return
+                if event.type == MOUSEBUTTONDOWN:
+                    if event.button == 1 and self.is_diagonal_btn_hovered:
+                        self.path_line = "Diagonal"
+                        self.load_search()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_straight_btn_hovered:
+                        self.path_line = "Straight"
+                        self.load_search()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_close_btn_hovered:
+                        return
+            #---------------------------------------------------------------------------------------#
+            pygame.display.update()
+
     #! Fix this to PRIVATE
     # Draw Staring & Ending icons
     def draw_default_icons(self, surface):
@@ -581,9 +653,15 @@ class Pathfinding(State):
         surface.blit(self.starting_icon, self.starting_icon.get_rect(center=self.center_starting_pos))
 
     def draw_bfs_area(self, surface):
-        visitedColor = "#318889"
-        frontierColor = "#00fff3"
-
+        if self.path_line == "Diagonal":
+            #visitedColor = "#456e82"
+            visitedColor = "#318889"
+            frontierColor = "#00fff3"
+        else:
+            #visitedColor = "#456e82"
+            visitedColor = "#31897f"
+            frontierColor = "#00ff9e"
+               
         # filled visited areas
         for loc in self.bfs_visited:
             x, y = loc
