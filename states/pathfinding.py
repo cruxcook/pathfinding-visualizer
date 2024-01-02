@@ -49,17 +49,42 @@ class Pathfinding(State):
         self.all_sprites.draw(surface)
 
     def get_event(self,event):
+        mouse_pos = vector(pygame.mouse.get_pos()) // TILE_SIZE     # Division(floor)
+
         #!-----------Input from keys (WIP)
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_m:
-                self.next = "MENU"
-                self.is_done = True
+            if event.key == pygame.K_w:     # Place regular wall
+                self.is_mouse_pressed = True 
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                        if mouse_pos in self.sg.walls :
+                            pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
+                            self.sg.walls.remove(mouse_pos)
+                        else:
+                            Wall(self,vector(mouse_pos),self.wall_icon)
+                            self.sg.walls.append(mouse_pos)
+                    self.wg.walls = self.sg.walls
+                self.load_search()
+            elif event.key == pygame.K_q:   # Place weighted wall
+                self.is_weighted_pressed = True
+                if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
+                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                        if self.convert_vect_int(mouse_pos) in self.wg.weights :
+                            pygame.sprite.spritecollide(WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon), self.all_sprites, True)
+                            self.wg.weights.pop(self.convert_vect_int(mouse_pos), None)      # Return none if that element not in dictionary
+                        else:
+                            WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
+                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
+                self.load_search()
+        
+        elif event.type == pygame.KEYUP:    # Stop dragging motion
+            self.is_mouse_pressed = False 
+            self.is_weighted_pressed = False
 
         #-----------Input from mouse
         # 1: Left Mouse
         # 2: Middle Mouse
         # 3: Right Mouse
-        mouse_pos = vector(pygame.mouse.get_pos()) // TILE_SIZE     # Division(floor)
 
         if event.type == pygame.MOUSEBUTTONDOWN: 
             if event.button == 1 and self.is_menu_btn_hovered:
@@ -117,9 +142,9 @@ class Pathfinding(State):
             elif self.is_weighted_pressed:
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
                     if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
-                        if self.vec2int(mouse_pos) not in self.wg.weights :
+                        if self.convert_vect_int(mouse_pos) not in self.wg.weights :
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
-                            self.wg.weights[self.vec2int(mouse_pos)] = 50       # low priority == hight cost
+                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # low priority == hight cost
                 
         elif event.type == pygame.MOUSEBUTTONUP:
             self.is_mouse_pressed = False
@@ -250,6 +275,10 @@ class Pathfinding(State):
             return True 
         return False 
 
+    #! Fix this to PRIVATE
+    def convert_vect_int(self, vector):
+        return (int(vector.x),int(vector.y)) 
+    
     #---------------------------------Rendering--------------------------------#
     def draw_btns(self, surface):
         self.menu_btn         = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH*3  - 150   ,HEIGHT + (TILE_SIZE+20)/2, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Main Menu", Color(TEXT_COLOR), TEXT_SIZE)
