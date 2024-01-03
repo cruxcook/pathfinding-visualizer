@@ -54,6 +54,18 @@ def draw_grid(surface):
     # draw the last line 
     pygame.draw.line(surface, Color(GRID_COLOR),(0,HEIGHT),(WIDTH,HEIGHT))
 
+# Store this function here so all search algorithms can reuse later
+def draw_all_paths(surface, path, arrows):
+    """ Draw all nodes in path """
+    for node, direction in path.items(): 
+        if direction:
+            x, y = node
+            x = x * TILE_SIZE + TILE_SIZE / 2
+            y = y * TILE_SIZE + TILE_SIZE / 2
+            img = arrows[convert_vect_int(direction)]
+            r = img.get_rect(center=(x, y))
+            surface.blit(img, r) 
+
 def check_collision(a, b):
     if a == b:
         return True 

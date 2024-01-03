@@ -77,6 +77,9 @@ class Pathfinding(State):
             if self.search == "BFS":
                 self.bfs.draw_bfs_area(surface)
                 self.bfs.draw_bfs_path(surface)  
+
+                if self.is_all_paths_showed == True:
+                    draw_all_paths(surface, self.bfs.bfs_path, self.bfs.arrows)
         else:
             draw_text("HELLO", surface, 35, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2) 
         
@@ -112,6 +115,8 @@ class Pathfinding(State):
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
                             self.wg.weights[convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
                 self.load_search()
+            elif event.key == pygame.K_a:   # Show up all paths
+                self.is_all_paths_showed = not self.is_all_paths_showed
         
         elif event.type == pygame.KEYUP:    # Stop dragging motion
             self.is_mouse_pressed = False 
@@ -197,6 +202,8 @@ class Pathfinding(State):
         
         self.width_pos = 0
         self.height_pos = 0
+
+        self.is_all_paths_showed = False
     
         # MENU BUTTON
         self.is_menu_btn_hovered = False
