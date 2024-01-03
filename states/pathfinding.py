@@ -1,11 +1,13 @@
 import pygame, sys, os, time, math, random
 import ast        # Convert string to list
 from pygame.locals import *
+from collections import deque       # The double-ended queue, cannot access items in the middle, but perfect for either ends ( faster than using list )
 
 from settings import *
 from states.state import *
 from entities.grid import *
 from entities.wall import *
+from algorithms.breadth_first_search import *
 
 class Pathfinding(State):
     def __init__(self):
@@ -20,13 +22,31 @@ class Pathfinding(State):
 
         self.sg = SquareGrid(GRID_WIDTH,GRID_HEIGHT) 
         self.wg = WeightedGrid(GRID_WIDTH,GRID_HEIGHT) 
-        
+
+        self.bfs = BreadthFirstSearch()
+
     def update(self, dt):
         if self.is_random_btn_pressed == True:
             self.generate_random_map()
         else:
             self.width_pos = 0
             self.height_pos= 0
+
+        if self.path_line == "Diagonal":
+            self.sg.connection = [vector(1,0),vector(-1,0),vector(0,1),vector(0,-1),
+                                vector(1,1),vector(-1,1),vector(1,-1),vector(-1,-1)]
+        else:
+            self.sg.connection = [vector(1,0),vector(-1,0),vector(0,1),vector(0,-1)]
+        self.wg.connection = self.sg.connection
+
+        if self.is_timer_running == True:   #? x2check this method, seem not accurate
+            self.start_time = pygame.time.get_ticks()
+
+        if self.search == "BFS":
+            self.bfs.run(self.sg, self.starting_pos, self.ending_pos, self.start_time)
+
+        self.all_sprites.update()
+        self.all_walls.update()
     
     def draw(self, surface):
         surface.fill(Color(BACKGROUND_COLOR))
@@ -43,6 +63,22 @@ class Pathfinding(State):
         if self.is_map_btn_pressed == True:
             self.draw_map(surface)
             self.is_map_btn_pressed = False
+
+        if self.is_algorithm_btn_pressed == True:
+            self.draw_algorithm_menu(surface)    
+            self.is_algorithm_btn_pressed = False
+
+        if self.is_path_btn_pressed == True:
+            self.draw_path_menu(surface)
+            self.is_path_btn_pressed = False
+
+        if self.search is not None:
+            draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
+            if self.search == "BFS":
+                self.bfs.draw_bfs_area(surface)
+                self.bfs.draw_bfs_path(surface)  
+        else:
+            draw_text("HELLO", surface, 35, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2) 
         
         #----------------------------------------------------------------------#
         self.draw_default_icons(surface)
@@ -56,7 +92,7 @@ class Pathfinding(State):
             if event.key == pygame.K_w:     # Place regular wall
                 self.is_mouse_pressed = True 
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
                         if mouse_pos in self.sg.walls :
                             pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
                             self.sg.walls.remove(mouse_pos)
@@ -68,13 +104,13 @@ class Pathfinding(State):
             elif event.key == pygame.K_q:   # Place weighted wall
                 self.is_weighted_pressed = True
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
-                        if self.convert_vect_int(mouse_pos) in self.wg.weights :
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                        if convert_vect_int(mouse_pos) in self.wg.weights :
                             pygame.sprite.spritecollide(WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon), self.all_sprites, True)
-                            self.wg.weights.pop(self.convert_vect_int(mouse_pos), None)      # Return none if that element not in dictionary
+                            self.wg.weights.pop(convert_vect_int(mouse_pos), None)      # Return none if that element not in dictionary
                         else:
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
-                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
+                            self.wg.weights[convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
                 self.load_search()
         
         elif event.type == pygame.KEYUP:    # Stop dragging motion
@@ -103,10 +139,14 @@ class Pathfinding(State):
                 # Reset search value    
                 self.new_search_props()  
                 self.search = None
+            elif event.button == 1 and self.is_algorithm_btn_hovered:
+                self.is_algorithm_btn_pressed = True
+            elif event.button == 1 and self.is_path_btn_hovered:
+                self.is_path_btn_pressed = True
             elif event.button == 1:     # Left Mouse places a regular wall
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
                     self.is_mouse_pressed = True 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
                         if mouse_pos in self.sg.walls :
                             pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
                             self.sg.walls.remove(mouse_pos)
@@ -117,13 +157,13 @@ class Pathfinding(State):
                     self.load_search()
             elif event.button == 3:     # Right Mouse places Ending Icon
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:
                         if not mouse_pos in self.sg.walls :
                             self.ending_pos = mouse_pos
                             self.load_search()
             elif event.button == 2:     # Middle Mouse places Starting Icon
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:
                         if not mouse_pos in self.sg.walls :
                             self.starting_pos = mouse_pos
                             self.load_search()
@@ -133,7 +173,7 @@ class Pathfinding(State):
         elif event.type == pygame.MOUSEMOTION:
             if self.is_mouse_pressed:
                 if (0 <= int(mouse_pos.x) < GRID_WIDTH) and (0 <= int(mouse_pos.y) < GRID_HEIGHT): 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
                         if mouse_pos not in self.sg.walls :
                             Wall(self,vector(mouse_pos),self.wall_icon)
                             self.sg.walls.append(mouse_pos)
@@ -141,10 +181,10 @@ class Pathfinding(State):
 
             elif self.is_weighted_pressed:
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
-                        if self.convert_vect_int(mouse_pos) not in self.wg.weights :
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                        if convert_vect_int(mouse_pos) not in self.wg.weights :
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
-                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # low priority == hight cost
+                            self.wg.weights[convert_vect_int(mouse_pos)] = 50       # low priority == hight cost
                 
         elif event.type == pygame.MOUSEBUTTONUP:
             self.is_mouse_pressed = False
@@ -166,7 +206,7 @@ class Pathfinding(State):
         self.is_instruction_btn_pressed = False
         self.is_next_btn_hovered = False
         self.is_back_btn_hovered = False
-        self.is_close_btn_hovered = False
+        self.is_close_btn_hovered = False   #? x2check if we can use it locally inside each function
 
         # MAP BUTTON
         self.is_map_btn_pressed = False
@@ -183,6 +223,15 @@ class Pathfinding(State):
 
         # ALGORITHM BUTTON
         self.search = None                  # Track running `Search` algorithm 
+        self.is_algorithm_btn_pressed = False
+        self.is_algorithm_btn_hovered = False
+        self.is_bfs_done = False
+        self.is_timer_running = False
+
+        # PATH BUTTON
+        self.is_path_btn_hovered = False
+        self.is_path_btn_pressed = False
+        self.path_line = None               # Change line to Diagonal or Straight
 
     def load_assets(self):
         super().load_dirs()
@@ -235,11 +284,38 @@ class Pathfinding(State):
             Wall(self,vector(wall),self.wall_icon)
         return data
     
+    #? x2check this with new_search_props() & load_search_props()
     def load_search(self):
-        pass
+        if self.search == "BFS" or self.search == "DFS":
+            self.is_bfs_done = False  # Reset search value   
 
+        self.new_search_props() 
+        self.load_search_props()
+
+    #? x2check this with load_search() & load_search_props()
     def new_search_props(self):
-        pass
+        self.bfs_frontier = deque()
+        self.bfs_visited = []
+        self.bfs_path = {}       # {node( int(vector) ) : direction(vector)}
+
+        self.node_path = deque() # Save only node of "main path" to pop out
+
+    #? x2check this with load_search() & new_search_props()
+    def load_search_props(self):
+        self.bfs_frontier.append(self.starting_pos) 
+        self.bfs_visited.append(self.starting_pos)
+        self.bfs_path[convert_vect_int(self.starting_pos)] = None  
+
+        self.start_time = 0
+        self.end_time = 0
+        self.is_timer_running = True    #? x2check this method, seem not accurate
+        self.is_node_path_done = False            # need to check in case loop of program add up more path in "node_path"
+        self.node_path = deque()
+
+        self.bfs.load_props(self.sg, self.starting_pos, self.ending_pos, 
+                            self.path_line, self.node_path, self.is_node_path_done, 
+                            self.is_timer_running, self.arrows,
+                            self.bfs_path, self.bfs_frontier, self.bfs_visited, self.is_bfs_done)
 
     #-------------------------------Support functions--------------------------#
     #! Fix this to PRIVATE
@@ -268,17 +344,7 @@ class Pathfinding(State):
                 self.width_pos = 0
         else:
             self.is_random_btn_pressed = False
-
-    #! Fix this to PRIVATE
-    def check_collision(self, a, b):
-        if a == b:
-            return True 
-        return False 
-
-    #! Fix this to PRIVATE
-    def convert_vect_int(self, vector):
-        return (int(vector.x),int(vector.y)) 
-    
+            
     #---------------------------------Rendering--------------------------------#
     def draw_btns(self, surface):
         self.menu_btn         = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH*3  - 150   ,HEIGHT + (TILE_SIZE+20)/2, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Main Menu", Color(TEXT_COLOR), TEXT_SIZE)
@@ -483,8 +549,103 @@ class Pathfinding(State):
             #------------------------------------------------------------------#
             pygame.display.update()
 
+    # Draw algorithm options to choose
+    def draw_algorithm_menu(self, surface):
+        while True:
+            draw_rect(WIDTH/2,HEIGHT/2,560,410, surface, Color("black"))
+            draw_rect(WIDTH/2,HEIGHT/2,550,400, surface, Color("white"))
+            draw_text("Algorithm", surface, 40, Color("red"), WIDTH/2, HEIGHT/2 - 190 + 30)
+            
+            self.bfs_btn      = draw_txt_rect(WIDTH/2, HEIGHT/2-120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "BFS", Color(TEXT_COLOR), TEXT_SIZE)
+            self.close_btn    = draw_txt_rect(WIDTH/2, HEIGHT/2+120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Close", Color(TEXT_COLOR), TEXT_SIZE)
+                
+            mouse_pos = vector(pygame.mouse.get_pos())
+
+            if self.bfs_btn.collidepoint(mouse_pos):
+                self.is_bfs_btn_hovered  = True
+                self.bfs_btn = draw_txt_rect(WIDTH/2,HEIGHT/2-120 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "BFS", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_bfs_btn_hovered  = False
+                
+            if self.close_btn.collidepoint(mouse_pos):
+                self.is_close_btn_hovered  = True
+                self.close_btn = draw_txt_rect(WIDTH/2,HEIGHT/2+120 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Close", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_close_btn_hovered  = False
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        return
+                if event.type == MOUSEBUTTONDOWN:
+                    if event.button == 1 and self.is_bfs_btn_hovered:
+                        self.search = "BFS"
+                        self.new_search_props()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_close_btn_hovered:
+                        return
+            pygame.display.update()   
+
+    def draw_path_menu(self, surface):
+        while True:
+            draw_rect(WIDTH/2,HEIGHT/2,250,350, surface, Color("black"))
+            draw_rect(WIDTH/2,HEIGHT/2,240,340, surface, Color("white"))
+
+            draw_text("Path Line", surface, 40, Color("red"), WIDTH/2, HEIGHT/2 - 160 + 30)
+            
+            self.diagonal_btn = draw_txt_rect(WIDTH/2,HEIGHT/2- 80 + 30,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Diagonal", Color(TEXT_COLOR), TEXT_SIZE)
+            self.straight_btn = draw_txt_rect(WIDTH/2,HEIGHT/2 +30 ,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Straight", Color(TEXT_COLOR), TEXT_SIZE)
+            self.close_btn    = draw_txt_rect(WIDTH/2,HEIGHT/2+80 + 30,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Close", Color(TEXT_COLOR), TEXT_SIZE)
+            
+            mouse_pos = vector(pygame.mouse.get_pos())
+
+            if self.diagonal_btn.collidepoint(mouse_pos):
+                self.is_diagonal_btn_hovered  = True
+                self.diagonal_btn = draw_txt_rect(WIDTH/2,HEIGHT/2-80 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Diagonal", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_diagonal_btn_hovered  = False
+                
+            if self.straight_btn.collidepoint(mouse_pos):
+                self.is_straight_btn_hovered  = True
+                self.straight_btn = draw_txt_rect(WIDTH/2,HEIGHT/2 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Straight", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_straight_btn_hovered  = False
+                
+            if self.close_btn.collidepoint(mouse_pos):
+                self.is_close_btn_hovered  = True
+                self.close_btn = draw_txt_rect(WIDTH/2,HEIGHT/2+80 + 30 ,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "Close", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_close_btn_hovered  = False
+                
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        return
+                if event.type == MOUSEBUTTONDOWN:
+                    if event.button == 1 and self.is_diagonal_btn_hovered:
+                        self.path_line = "Diagonal"
+                        self.load_search()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_straight_btn_hovered:
+                        self.path_line = "Straight"
+                        self.load_search()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_close_btn_hovered:
+                        return
+            #---------------------------------------------------------------------------------------#
+            pygame.display.update()
+
     #! Fix this to PRIVATE
-    # Draw Staring & Ending icons
+    # Draw Starting & Ending icons
     def draw_default_icons(self, surface):
         self.center_ending_pos = (self.ending_pos.x * TILE_SIZE + TILE_SIZE / 2, self.ending_pos.y * TILE_SIZE + TILE_SIZE / 2)
         surface.blit(self.ending_icon, self.ending_icon.get_rect(center=self.center_ending_pos))
