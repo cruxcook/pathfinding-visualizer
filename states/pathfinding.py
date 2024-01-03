@@ -7,6 +7,7 @@ from settings import *
 from states.state import *
 from entities.grid import *
 from entities.wall import *
+from algorithms.breadth_first_search import *
 
 class Pathfinding(State):
     def __init__(self):
@@ -21,7 +22,9 @@ class Pathfinding(State):
 
         self.sg = SquareGrid(GRID_WIDTH,GRID_HEIGHT) 
         self.wg = WeightedGrid(GRID_WIDTH,GRID_HEIGHT) 
-        
+
+        self.bfs = BreadthFirstSearch()
+
     def update(self, dt):
         if self.is_random_btn_pressed == True:
             self.generate_random_map()
@@ -36,11 +39,11 @@ class Pathfinding(State):
             self.sg.connection = [vector(1,0),vector(-1,0),vector(0,1),vector(0,-1)]
         self.wg.connection = self.sg.connection
 
-        if self.is_timer_running == True:
+        if self.is_timer_running == True:   #? x2check this method, seem not accurate
             self.start_time = pygame.time.get_ticks()
 
         if self.search == "BFS":
-            self.BreadthFirstSearch(self.sg, self.starting_pos, self.ending_pos)
+            self.bfs.run(self.sg, self.starting_pos, self.ending_pos, self.start_time)
 
         self.all_sprites.update()
         self.all_walls.update()
@@ -72,8 +75,8 @@ class Pathfinding(State):
         if self.search is not None:
             draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
             if self.search == "BFS":
-                self.draw_bfs_area(surface)
-                self.draw_bfs_path(surface)  
+                self.bfs.draw_bfs_area(surface)
+                self.bfs.draw_bfs_path(surface)  
         else:
             draw_text("HELLO", surface, 35, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2) 
         
@@ -89,7 +92,7 @@ class Pathfinding(State):
             if event.key == pygame.K_w:     # Place regular wall
                 self.is_mouse_pressed = True 
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
                         if mouse_pos in self.sg.walls :
                             pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
                             self.sg.walls.remove(mouse_pos)
@@ -101,13 +104,13 @@ class Pathfinding(State):
             elif event.key == pygame.K_q:   # Place weighted wall
                 self.is_weighted_pressed = True
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
-                        if self.convert_vect_int(mouse_pos) in self.wg.weights :
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # Avoid placing wall on "start" and "end" icon
+                        if convert_vect_int(mouse_pos) in self.wg.weights :
                             pygame.sprite.spritecollide(WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon), self.all_sprites, True)
-                            self.wg.weights.pop(self.convert_vect_int(mouse_pos), None)      # Return none if that element not in dictionary
+                            self.wg.weights.pop(convert_vect_int(mouse_pos), None)      # Return none if that element not in dictionary
                         else:
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
-                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
+                            self.wg.weights[convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
                 self.load_search()
         
         elif event.type == pygame.KEYUP:    # Stop dragging motion
@@ -143,7 +146,7 @@ class Pathfinding(State):
             elif event.button == 1:     # Left Mouse places a regular wall
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
                     self.is_mouse_pressed = True 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
                         if mouse_pos in self.sg.walls :
                             pygame.sprite.spritecollide(Wall(self,vector(mouse_pos),self.wall_icon), self.all_sprites, True)
                             self.sg.walls.remove(mouse_pos)
@@ -154,13 +157,13 @@ class Pathfinding(State):
                     self.load_search()
             elif event.button == 3:     # Right Mouse places Ending Icon
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:
                         if not mouse_pos in self.sg.walls :
                             self.ending_pos = mouse_pos
                             self.load_search()
             elif event.button == 2:     # Middle Mouse places Starting Icon
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT:
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:
                         if not mouse_pos in self.sg.walls :
                             self.starting_pos = mouse_pos
                             self.load_search()
@@ -170,7 +173,7 @@ class Pathfinding(State):
         elif event.type == pygame.MOUSEMOTION:
             if self.is_mouse_pressed:
                 if (0 <= int(mouse_pos.x) < GRID_WIDTH) and (0 <= int(mouse_pos.y) < GRID_HEIGHT): 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
                         if mouse_pos not in self.sg.walls :
                             Wall(self,vector(mouse_pos),self.wall_icon)
                             self.sg.walls.append(mouse_pos)
@@ -178,10 +181,10 @@ class Pathfinding(State):
 
             elif self.is_weighted_pressed:
                 if 0 <= int(mouse_pos.x) < GRID_WIDTH and 0 <= int(mouse_pos.y) < GRID_HEIGHT: 
-                    if self.check_collision(mouse_pos, self.starting_pos) == False and self.check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
-                        if self.convert_vect_int(mouse_pos) not in self.wg.weights :
+                    if check_collision(mouse_pos, self.starting_pos) == False and check_collision(mouse_pos, self.ending_pos) == False:            # not make wall on "start" and "end" icon
+                        if convert_vect_int(mouse_pos) not in self.wg.weights :
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
-                            self.wg.weights[self.convert_vect_int(mouse_pos)] = 50       # low priority == hight cost
+                            self.wg.weights[convert_vect_int(mouse_pos)] = 50       # low priority == hight cost
                 
         elif event.type == pygame.MOUSEBUTTONUP:
             self.is_mouse_pressed = False
@@ -281,6 +284,7 @@ class Pathfinding(State):
             Wall(self,vector(wall),self.wall_icon)
         return data
     
+    #? x2check this with new_search_props() & load_search_props()
     def load_search(self):
         if self.search == "BFS" or self.search == "DFS":
             self.is_bfs_done = False  # Reset search value   
@@ -288,6 +292,7 @@ class Pathfinding(State):
         self.new_search_props() 
         self.load_search_props()
 
+    #? x2check this with load_search() & load_search_props()
     def new_search_props(self):
         self.bfs_frontier = deque()
         self.bfs_visited = []
@@ -295,16 +300,22 @@ class Pathfinding(State):
 
         self.node_path = deque() # Save only node of "main path" to pop out
 
+    #? x2check this with load_search() & new_search_props()
     def load_search_props(self):
         self.bfs_frontier.append(self.starting_pos) 
         self.bfs_visited.append(self.starting_pos)
-        self.bfs_path[self.convert_vect_int(self.starting_pos)] = None  
+        self.bfs_path[convert_vect_int(self.starting_pos)] = None  
 
         self.start_time = 0
         self.end_time = 0
-        self.is_timer_running = True
+        self.is_timer_running = True    #? x2check this method, seem not accurate
         self.is_node_path_done = False            # need to check in case loop of program add up more path in "node_path"
         self.node_path = deque()
+
+        self.bfs.load_props(self.sg, self.starting_pos, self.ending_pos, 
+                            self.path_line, self.node_path, self.is_node_path_done, 
+                            self.is_timer_running, self.arrows,
+                            self.bfs_path, self.bfs_frontier, self.bfs_visited, self.is_bfs_done)
 
     #-------------------------------Support functions--------------------------#
     #! Fix this to PRIVATE
@@ -333,17 +344,7 @@ class Pathfinding(State):
                 self.width_pos = 0
         else:
             self.is_random_btn_pressed = False
-
-    #! Fix this to PRIVATE
-    def check_collision(self, a, b):
-        if a == b:
-            return True 
-        return False 
-
-    #! Fix this to PRIVATE
-    def convert_vect_int(self, vector):
-        return (int(vector.x),int(vector.y)) 
-    
+            
     #---------------------------------Rendering--------------------------------#
     def draw_btns(self, surface):
         self.menu_btn         = draw_txt_rect(WIDTH/2 - BUTTON_WIDTH*3  - 150   ,HEIGHT + (TILE_SIZE+20)/2, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Main Menu", Color(TEXT_COLOR), TEXT_SIZE)
@@ -644,96 +645,10 @@ class Pathfinding(State):
             pygame.display.update()
 
     #! Fix this to PRIVATE
-    # Draw Staring & Ending icons
+    # Draw Starting & Ending icons
     def draw_default_icons(self, surface):
         self.center_ending_pos = (self.ending_pos.x * TILE_SIZE + TILE_SIZE / 2, self.ending_pos.y * TILE_SIZE + TILE_SIZE / 2)
         surface.blit(self.ending_icon, self.ending_icon.get_rect(center=self.center_ending_pos))
         
         self.center_starting_pos = (self.starting_pos.x * TILE_SIZE + TILE_SIZE / 2, self.starting_pos.y * TILE_SIZE + TILE_SIZE / 2)
         surface.blit(self.starting_icon, self.starting_icon.get_rect(center=self.center_starting_pos))
-
-    def draw_bfs_area(self, surface):
-        if self.path_line == "Diagonal":
-            #visitedColor = "#456e82"
-            visitedColor = "#318889"
-            frontierColor = "#00fff3"
-        else:
-            #visitedColor = "#456e82"
-            visitedColor = "#31897f"
-            frontierColor = "#00ff9e"
-               
-        # filled visited areas
-        for loc in self.bfs_visited:
-            x, y = loc
-            r = pygame.Rect(x * TILE_SIZE +1, y * TILE_SIZE +1, TILE_SIZE -1, TILE_SIZE-1)
-            pygame.draw.rect(surface, Color(visitedColor), r)
-        
-        # filled frontier areas
-        if len(self.bfs_frontier) > 0:   
-            for node in self.bfs_frontier:
-                x, y = node
-                r = pygame.Rect(x * TILE_SIZE +1, y * TILE_SIZE + 1, TILE_SIZE -1, TILE_SIZE -1)
-                pygame.draw.rect(surface, Color(frontierColor), r)            
-
-    def draw_bfs_path(self, surface):
-        if self.is_bfs_done == True:
-            self.bfs_path = self.get_bfs_path(self.sg, self.starting_pos, self.ending_pos)
-            main_path = {}               # save the final path from location to destination
-
-            ''' Start rendering from destination back to location, due to the sign of arrows '''
-            current_node = self.ending_pos - self.bfs_path[self.convert_vect_int(self.ending_pos)]
-            while current_node != self.starting_pos:   
-                # save the final path for path animation
-                main_path[self.convert_vect_int(current_node)] = self.bfs_path[self.convert_vect_int(current_node)]
-                # find next_node in path
-                current_node = current_node - self.bfs_path[self.convert_vect_int(current_node)]    
-                
-            if self.is_node_path_done == False:
-                for node in main_path:          # save node of the main path
-                    self.node_path.append(node)      # use node_path[] instead of assigning directly main_path{} for splitting up node, from direction in mainMap 
-                self.is_node_path_done = True
-        
-            if self.is_timer_running == True:   
-                self.end_time = pygame.time.get_ticks() - self.start_time 
-                self.is_timer_running = False      
-            draw_text(str(self.end_time)+"'", surface, 22, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 + 15)
-
-        if self.is_node_path_done:            
-            """ Update node_path as well as exclude updating main_path with new location"""
-            for current_node in self.node_path:
-                current_node = vector(current_node)
-                x = current_node.x * TILE_SIZE + TILE_SIZE / 2
-                y = current_node.y * TILE_SIZE + TILE_SIZE / 2
-                img = self.arrows[self.convert_vect_int(self.bfs_path[self.convert_vect_int(current_node)])]
-                r = img.get_rect(center=(x, y))
-                surface.blit(img, r)
-
-    #---------------------------------Algorithms-------------------------------#
-    def BreadthFirstSearch(self, graph,start,end): 
-        if len(self.bfs_frontier)>0 and self.is_bfs_done == False:     # as long as there are things in frontier
-            #current_node = self.checkB_DFS(self.bfs_frontier)     # Uncomment this if had checkB_DFS
-            current_node = self.bfs_frontier.popleft()   #! Remove this if had checkB_DFS()   
-            if current_node == end:
-                self.is_bfs_done = True
-            for next_node in graph.find_neighbors(current_node, graph.connection):       # find neightbor of current_node node
-                if next_node not in self.bfs_visited:
-                    self.bfs_frontier.append(next_node)
-                    self.bfs_visited.append(next_node)
-    
-    def get_bfs_path(self, graph, start, end):
-        """ Rerun BFS but from destination to location to draw the path"""
-        frontier = deque()
-        frontier.append(start)
-        path = {}
-        path[self.convert_vect_int(start)] = None
-        while len(frontier) > 0:
-            #current_node = self.checkB_DFS(frontier)    # Uncomment this if had checkB_DFS
-            current_node = frontier.popleft()   #! Remove this if had checkB_DFS()       
-            if current_node == end:
-                break
-            for next_node in graph.find_neighbors(current_node, graph.connection):
-                if self.convert_vect_int(next_node) not in path:
-                    frontier.append(next_node)
-                    path[self.convert_vect_int(next_node)] = next_node - current_node 
-        return path    
-       
