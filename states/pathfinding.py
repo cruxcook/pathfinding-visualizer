@@ -45,6 +45,10 @@ class Pathfinding(State):
         if self.search == "BFS":
             self.bfs.run(self.sg, self.starting_pos, self.ending_pos, self.start_time)
 
+        if self.is_path_motion_enable == True:
+            self.draw_path_motion()
+
+        #----------------------------------------------------------------------#
         self.all_sprites.update()
         self.all_walls.update()
     
@@ -78,7 +82,7 @@ class Pathfinding(State):
                 self.bfs.draw_bfs_area(surface)
                 self.bfs.draw_bfs_path(surface)  
 
-                if self.is_all_paths_showed == True:
+                if self.is_all_paths_enable == True:
                     draw_all_paths(surface, self.bfs.bfs_path, self.bfs.arrows)
         else:
             draw_text("HELLO", surface, 35, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2) 
@@ -116,8 +120,9 @@ class Pathfinding(State):
                             self.wg.weights[convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
                 self.load_search()
             elif event.key == pygame.K_a:   # Show up all paths
-                self.is_all_paths_showed = not self.is_all_paths_showed
-        
+                self.is_all_paths_enable = not self.is_all_paths_enable
+            elif event.key == pygame.K_m:   # Animate path
+                self.is_path_motion_enable = True
         elif event.type == pygame.KEYUP:    # Stop dragging motion
             self.is_mouse_pressed = False 
             self.is_weighted_pressed = False
@@ -202,8 +207,6 @@ class Pathfinding(State):
         
         self.width_pos = 0
         self.height_pos = 0
-
-        self.is_all_paths_showed = False
     
         # MENU BUTTON
         self.is_menu_btn_hovered = False
@@ -239,6 +242,10 @@ class Pathfinding(State):
         self.is_path_btn_hovered = False
         self.is_path_btn_pressed = False
         self.path_line = None               # Change line to Diagonal or Straight
+
+        # OTHERS
+        self.is_all_paths_enable = False
+        self.is_path_motion_enable = False
 
     def load_assets(self):
         super().load_dirs()
@@ -659,3 +666,13 @@ class Pathfinding(State):
         
         self.center_starting_pos = (self.starting_pos.x * TILE_SIZE + TILE_SIZE / 2, self.starting_pos.y * TILE_SIZE + TILE_SIZE / 2)
         surface.blit(self.starting_icon, self.starting_icon.get_rect(center=self.center_starting_pos))
+
+    def draw_path_motion(self):
+        if len(self.node_path) == 0:
+            self.is_path_motion_enable = False
+        elif len(self.node_path) > 0 and self.is_path_motion_enable:
+            node = vector(self.node_path.pop())
+            #direction = self.starting_pos - node
+            self.starting_pos = node
+
+            pygame.time.delay(150)
