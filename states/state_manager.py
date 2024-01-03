@@ -10,13 +10,13 @@ class StateManager:
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.init()
         self.running = True
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT+TILE_SIZE))
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT+TILE_SIZE + 20))   #! Find a better fix for (+20)
         self.clock = pygame.time.Clock()
         
         #---------------------------------------------------------------------------------------#
         self.state_dict = {"MENU" : Menu(),
-                          "PATHFINDING" : PathFinding(),
-                          "ABOUT" : About()}
+                            "PATHFINDING" : Pathfinding(),
+                            "ABOUT" : About()}
         
         self.load_state("MENU")
         
@@ -24,7 +24,7 @@ class StateManager:
         self.state = self.state_dict[state_name]
     
     def flip_state(self):
-        self.state.done = False
+        self.state.is_done = False
         self.state_name = self.state.next
         self.load_state(self.state_name)
 
@@ -42,12 +42,13 @@ class StateManager:
         sys.exit()
     
     def update(self, dt):
-        if self.state.done == True:
+        if self.state.is_done == True:
             self.flip_state()
             
         self.state.update(dt)
         
     def draw(self, surface):
+        pygame.display.set_caption("{} - FPS: {:.2f}".format(TITLE, self.clock.get_fps() ))
         self.state.draw(surface)
         
     def event_handler(self):
