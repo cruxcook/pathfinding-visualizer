@@ -3,6 +3,7 @@ from pygame.locals import *
 from os import path
 from settings import * 
 
+vector = pygame.math.Vector2
 class State():
     def __init__(self):
         self.is_done =  False
@@ -52,3 +53,11 @@ def draw_grid(surface):
     
     # draw the last line 
     pygame.draw.line(surface, Color(GRID_COLOR),(0,HEIGHT),(WIDTH,HEIGHT))
+
+def check_collision(a, b):
+    if a == b:
+        return True 
+    return False 
+
+def convert_vect_int(vector):
+    return (int(vector.x),int(vector.y)) 
