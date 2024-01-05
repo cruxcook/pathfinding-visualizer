@@ -79,7 +79,8 @@ class Pathfinding(State):
         if self.search is not None:
             draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
             if self.search == "BFS":
-                self.bfs.draw_bfs_area(surface)
+                if self.is_searching_area_enable == True:   # Toggle searching area
+                    self.bfs.draw_bfs_area(surface)
                 self.bfs.draw_bfs_path(surface)  
 
                 if self.is_all_paths_enable == True:
@@ -119,10 +120,13 @@ class Pathfinding(State):
                             WeightedWall(self,vector(mouse_pos),self.weighted_wall_icon)
                             self.wg.weights[convert_vect_int(mouse_pos)] = 50       # Low priority == Hight cost
                 self.load_search()
-            elif event.key == pygame.K_a:   # Show up all paths
+            elif event.key == pygame.K_a:   # Toggle all paths
                 self.is_all_paths_enable = not self.is_all_paths_enable
-            elif event.key == pygame.K_m:   # Animate path
+            elif event.key == pygame.K_m:   # Enable path motion
                 self.is_path_motion_enable = True
+            elif event.key == pygame.K_e:   # Toggle searching area
+                self.is_searching_area_enable = not self.is_searching_area_enable
+        
         elif event.type == pygame.KEYUP:    # Stop dragging motion
             self.is_mouse_pressed = False 
             self.is_weighted_pressed = False
@@ -246,6 +250,7 @@ class Pathfinding(State):
         # OTHERS
         self.is_all_paths_enable = False
         self.is_path_motion_enable = False
+        self.is_searching_area_enable = True    # Searching area is rendered by default
 
     def load_assets(self):
         super().load_dirs()
