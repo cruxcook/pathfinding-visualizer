@@ -42,7 +42,7 @@ class Pathfinding(State):
         if self.is_timer_running == True:   #? x2check this method, seem not accurate
             self.start_time = pygame.time.get_ticks()
 
-        if self.search == "BFS":
+        if self.search == "BFS" or self.search == "DFS":
             self.bfs.run(self.sg, self.starting_pos, self.ending_pos, self.start_time)
 
         if self.is_path_motion_enable == True:
@@ -78,7 +78,7 @@ class Pathfinding(State):
 
         if self.search is not None:
             draw_text(self.search, surface, 25, Color("red"), WIDTH/2 ,HEIGHT + (TILE_SIZE+20)/2 - 13)
-            if self.search == "BFS":
+            if self.search == "BFS" or self.search == "DFS":
                 if self.is_searching_area_enable == True:   # Toggle searching area
                     self.bfs.draw_bfs_area(surface)
                 self.bfs.draw_bfs_path(surface)  
@@ -331,7 +331,7 @@ class Pathfinding(State):
         self.is_node_path_done = False            # need to check in case loop of program add up more path in "node_path"
         self.node_path = deque()
 
-        self.bfs.load_props(self.sg, self.starting_pos, self.ending_pos, 
+        self.bfs.load_props(self.search, self.sg, self.starting_pos, self.ending_pos, 
                             self.path_line, self.node_path, self.is_node_path_done, 
                             self.is_timer_running, self.arrows,
                             self.bfs_path, self.bfs_frontier, self.bfs_visited, self.is_bfs_done)
@@ -575,8 +575,9 @@ class Pathfinding(State):
             draw_rect(WIDTH/2,HEIGHT/2,550,400, surface, Color("white"))
             draw_text("Algorithm", surface, 40, Color("red"), WIDTH/2, HEIGHT/2 - 190 + 30)
             
-            self.bfs_btn      = draw_txt_rect(WIDTH/2, HEIGHT/2-120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "BFS", Color(TEXT_COLOR), TEXT_SIZE)
-            self.close_btn    = draw_txt_rect(WIDTH/2, HEIGHT/2+120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Close", Color(TEXT_COLOR), TEXT_SIZE)
+            self.bfs_btn    = draw_txt_rect(WIDTH/2, HEIGHT/2-120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "BFS", Color(TEXT_COLOR), TEXT_SIZE)
+            self.dfs_btn    = draw_txt_rect(WIDTH/2 + 190, HEIGHT/2-120 + 30,BUTTON_WIDTH,BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "DFS", Color(TEXT_COLOR), TEXT_SIZE)
+            self.close_btn  = draw_txt_rect(WIDTH/2, HEIGHT/2+120 + 30, BUTTON_WIDTH, BUTTON_HEIGHT, surface, Color(BUTTON_COLOR), "Close", Color(TEXT_COLOR), TEXT_SIZE)
                 
             mouse_pos = vector(pygame.mouse.get_pos())
 
@@ -585,6 +586,12 @@ class Pathfinding(State):
                 self.bfs_btn = draw_txt_rect(WIDTH/2,HEIGHT/2-120 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "BFS", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
             else:
                 self.is_bfs_btn_hovered  = False
+                
+            if self.dfs_btn.collidepoint(mouse_pos):
+                self.is_dfs_btn_hovered  = True     #? x2check if we need this
+                self.dfs_btn = draw_txt_rect(WIDTH/2 + 190, HEIGHT/2-120 + 30,BUTTON_HOVER_WIDTH,BUTTON_HOVER_HEIGHT, surface, Color(BUTTON_HOVER_COLOR), "DFS", Color(TEXT_HOVER_COLOR), TEXT_HOVER_SIZE)
+            else:
+                self.is_dfs_btn_hovered  = False    #? x2check if we need this
                 
             if self.close_btn.collidepoint(mouse_pos):
                 self.is_close_btn_hovered  = True
@@ -602,6 +609,11 @@ class Pathfinding(State):
                 if event.type == MOUSEBUTTONDOWN:
                     if event.button == 1 and self.is_bfs_btn_hovered:
                         self.search = "BFS"
+                        self.new_search_props()
+                        self.load_search_props()
+                        return
+                    if event.button == 1 and self.is_dfs_btn_hovered:
+                        self.search = "DFS"
                         self.new_search_props()
                         self.load_search_props()
                         return
